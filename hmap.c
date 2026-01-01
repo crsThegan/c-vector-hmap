@@ -85,7 +85,8 @@ int hmap_append(struct Hmap *self, const char *key, void *value) {
     struct hmap_BucketItem *bck_item = &self->buckets[idx];
     if (!bck_item->value) {
         strncpy(bck_item->key, key, HMAP_MAX_KEY_LEN);
-        bck_item->value = value;
+        bck_item->value = calloc(1, self->value_size);
+        memcpy(bck_item->value, value, self->value_size);
     } else {
         struct hmap_BucketItem *prev;
         while (bck_item->next) {
