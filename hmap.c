@@ -111,6 +111,7 @@ int hmap_pop(struct Hmap *self, const char *key) {
         return -1;
     struct hmap_BucketItem *prev = bck_item->prev;
     struct hmap_BucketItem *reconn_ptr = bck_item->next;
+    free(bck_item->value);
     free(bck_item);
     if (prev)
         prev->next = reconn_ptr;
