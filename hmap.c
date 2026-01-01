@@ -26,7 +26,7 @@ void hmap_destroy(struct Hmap *self) {
             struct hmap_BucketItem *prev = bck_item->prev;
             free(bck_item->value);
             free(bck_item);
-            bck_item = bck_item->prev;
+            bck_item = prev;
         }
         memset(bck_item, 0, sizeof(struct hmap_BucketItem));
     }
