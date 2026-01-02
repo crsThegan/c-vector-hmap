@@ -19,16 +19,16 @@ void hmap_destroy(struct Hmap *self) {
     for (int i = 0; i < HMAP_MAX_BUCKETS; i++) {
         if (!self->buckets[i].value)
             continue;
-        struct hmap_BucketItem *bck_item = &self->buckets[i];
-        while (bck_item->next)
-            bck_item = bck_item->next;
-        while (bck_item->prev) {
-            struct hmap_BucketItem *prev = bck_item->prev;
+        struct hmap_BucketItem *bck_item = &self->buckets[i],
+                               *next = bck_item->next;
+        memset(bck_item, 0, sizeof(struct hmap_BucketItem));
+        bck_item = next;
+        while (bck_item) {
+            next = bck_item->next;
             free(bck_item->value);
             free(bck_item);
-            bck_item = prev;
+            bck_item = next;
         }
-        memset(bck_item, 0, sizeof(struct hmap_BucketItem));
     }
 }
 
@@ -112,9 +112,10 @@ int hmap_pop(struct Hmap *self, const char *key) {
     struct hmap_BucketItem *prev = bck_item->prev;
     struct hmap_BucketItem *reconn_ptr = bck_item->next;
     free(bck_item->value);
-    free(bck_item);
-    if (prev)
+    if (prev) {
+        free(bck_item);
         prev->next = reconn_ptr;
+    }
     reconn_ptr->prev = prev;
     return 0;
 }
