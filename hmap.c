@@ -84,7 +84,7 @@ int hmap_append(struct Hmap *self, const char *key, void *value) {
     size_t idx = hash % HMAP_MAX_BUCKETS;
     struct hmap_BucketItem *bck_item = &self->buckets[idx];
     if (!bck_item->value) {
-        strncpy(bck_item->key, key, HMAP_MAX_KEY_LEN);
+        strncpy(bck_item->key, key, strlen(key));
         bck_item->value = calloc(1, self->value_size);
         memcpy(bck_item->value, value, self->value_size);
     } else {
@@ -110,12 +110,22 @@ int hmap_pop(struct Hmap *self, const char *key) {
     if (!bck_item)
         return -1;
     struct hmap_BucketItem *prev = bck_item->prev;
-    struct hmap_BucketItem *reconn_ptr = bck_item->next;
-    free(bck_item->value);
+    struct hmap_BucketItem *next = bck_item->next;
     if (prev) {
+        free(bck_item->value);
         free(bck_item);
-        prev->next = reconn_ptr;
+        prev->next = next;
+        next->prev = prev;
+    } else if (next) {
+        memcpy(bck_item, next, sizeof(struct hmap_BucketItem));
+        bck_item->prev = NULL;
+        if (next->next)
+            next->next->prev = bck_item;
+        free(next);
+    } else {
+        struct hmap_BucketItem empty = {{0}, NULL, NULL, NULL};
+        free(bck_item->value);
+        *bck_item = empty;
     }
-    reconn_ptr->prev = prev;
     return 0;
 }
