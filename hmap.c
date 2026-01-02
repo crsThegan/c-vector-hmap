@@ -21,6 +21,7 @@ void hmap_destroy(struct Hmap *self) {
             continue;
         struct hmap_BucketItem *bck_item = &self->buckets[i],
                                *next = bck_item->next;
+        free(bck_item->value);
         memset(bck_item, 0, sizeof(struct hmap_BucketItem));
         bck_item = next;
         while (bck_item) {
@@ -43,7 +44,7 @@ size_t hash_fnv1a(const char *s) {
 
 static struct hmap_BucketItem *hmap_bucket_at(struct Hmap *self,
                                               const char *key) {
-    if (strlen(key) > HMAP_MAX_KEY_LEN) {
+    if (strlen(key) >= HMAP_MAX_KEY_LEN) {
         errno = EINVAL;
         return NULL;
     }
@@ -62,11 +63,11 @@ static struct hmap_BucketItem *hmap_pair_at(struct Hmap *self,
     struct hmap_BucketItem *bck_item = hmap_bucket_at(self, key);
     if (!bck_item)
         return NULL;
-    while (memcmp(bck_item->key, key, strlen(key)) && bck_item->next)
-        bck_item = bck_item->next;
-    if (!bck_item)
-        return NULL;
-    return bck_item;
+    for (; bck_item; bck_item = bck_item->next) {
+        if (!strncmp(bck_item->key, key, HMAP_MAX_KEY_LEN))
+            return bck_item;
+    }
+    return NULL;
 }
 
 void *hmap_at(struct Hmap *self, const char *key) {
@@ -80,11 +81,16 @@ void *hmap_at(struct Hmap *self, const char *key) {
 int hmap_append(struct Hmap *self, const char *key, void *value) {
     if (hmap_at(self, key))
         return -1;
+    if (strlen(key) >= HMAP_MAX_KEY_LEN) {
+        errno = EINVAL;
+        return -1;
+    }
     size_t hash = hash_fnv1a(key);
     size_t idx = hash % HMAP_MAX_BUCKETS;
     struct hmap_BucketItem *bck_item = &self->buckets[idx];
     if (!bck_item->value) {
         strncpy(bck_item->key, key, strlen(key));
+        bck_item->key[HMAP_MAX_KEY_LEN - 1] = 0;
         bck_item->value = calloc(1, self->value_size);
         memcpy(bck_item->value, value, self->value_size);
     } else {
@@ -96,7 +102,8 @@ int hmap_append(struct Hmap *self, const char *key, void *value) {
         bck_item->next = calloc(1, sizeof(struct hmap_BucketItem));
         prev = bck_item;
         bck_item = bck_item->next;
-        strncpy(bck_item->key, key, HMAP_MAX_KEY_LEN);
+        strncpy(bck_item->key, key, strlen(key));
+        bck_item->key[HMAP_MAX_KEY_LEN - 1] = 0;
         bck_item->value = calloc(1, self->value_size);
         memcpy(bck_item->value, value, self->value_size);
         bck_item->next = NULL;
@@ -115,7 +122,8 @@ int hmap_pop(struct Hmap *self, const char *key) {
         free(bck_item->value);
         free(bck_item);
         prev->next = next;
-        next->prev = prev;
+        if (next)
+            next->prev = prev;
     } else if (next) {
         memcpy(bck_item, next, sizeof(struct hmap_BucketItem));
         bck_item->prev = NULL;
