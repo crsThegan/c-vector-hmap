@@ -61,8 +61,6 @@ static struct hmap_BucketItem *hmap_bucket_at(struct Hmap *self,
 static struct hmap_BucketItem *hmap_pair_at(struct Hmap *self,
                                             const char *key) {
     struct hmap_BucketItem *bck_item = hmap_bucket_at(self, key);
-    if (!bck_item)
-        return NULL;
     for (; bck_item; bck_item = bck_item->next) {
         if (!strncmp(bck_item->key, key, HMAP_MAX_KEY_LEN))
             return bck_item;
